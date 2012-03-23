@@ -1,0 +1,92 @@
+<!DOCTYPE CollisionAreas>
+<collisionareas>
+ <sequence title="stand" delay="150">
+  <frame>
+   <rect type="hit" x="38" y="7" w="30" h="73"/>
+  </frame>
+ </sequence>
+ <sequence title="walk" delay="150">
+  <frame>
+   <rect type="hit" x="38" y="7" w="30" h="73"/>
+  </frame>
+  <frame>
+   <rect type="hit" x="38" y="7" w="30" h="73"/>
+  </frame>
+  <frame>
+   <rect type="hit" x="38" y="7" w="30" h="73"/>
+  </frame>
+  <frame>
+   <rect type="hit" x="38" y="7" w="30" h="73"/>
+  </frame>
+  <frame>
+   <rect type="hit" x="38" y="7" w="30" h="73"/>
+  </frame>
+ </sequence>
+ <sequence title="attack" delay="150">
+  <frame>
+   <rect type="hit" x="16" y="10" w="30" h="73"/>
+  </frame>
+  <frame>
+   <rect type="hit" x="28" y="7" w="40" h="67"/>
+   <rect type="attack" x="0" y="10" w="28" h="60"/>
+  </frame>
+  <frame>
+   <rect type="hit" x="12" y="7" w="40" h="67"/>
+  </frame>
+ </sequence>
+ <sequence title="hit" delay="150">
+  <frame>
+   <rect type="hit" x="24" y="20" w="30" h="68"/>
+  </frame>
+ </sequence>
+ <sequence title="jump" delay="150">
+  <frame>
+   <rect type="hit" x="38" y="7" w="30" h="73"/>
+  </frame>
+ </sequence>
+ <sequence title="land" delay="150">
+  <frame>
+   <rect type="hit" x="38" y="7" w="30" h="63"/>
+  </frame>
+ </sequence>
+ <sequence title="rush" delay="150">
+  <frame>
+   <rect type="hit" x="12" y="40" w="51" h="48"/>
+   <rect type="attack" x="0" y="48" w="12" h="13"/>
+   <rect type="attack" x="27" y="0" w="27" h="25"/>
+  </frame>
+  <frame>
+   <rect type="hit" x="12" y="40" w="51" h="48"/>
+   <rect type="attack" x="0" y="48" w="12" h="13"/>
+   <rect type="attack" x="27" y="0" w="27" h="25"/>
+  </frame>
+  <frame>
+   <rect type="hit" x="12" y="40" w="51" h="48"/>
+   <rect type="attack" x="0" y="48" w="12" h="13"/>
+   <rect type="attack" x="27" y="0" w="27" h="25"/>
+  </frame>
+ </sequence>
+ <sequence title="jumpattack" delay="150">
+  <frame>
+   <rect type="hit" x="38" y="7" w="30" h="73"/>
+   <rect type="attack" x="0" y="15" w="35" h="56"/>
+  </frame>
+ </sequence>
+ <sequence title="fall" delay="150">
+  <frame>
+  </frame>
+ </sequence>
+ <sequence title="lie" delay="150">
+  <frame>
+  </frame>
+ </sequence>
+ <sequence title="raise" delay="150">
+  <frame>
+  </frame>
+ </sequence>
+ <sequence title="guard" delay="150">
+  <frame>
+   <rect type="hit" x="19" y="7" w="39" h="71"/>
+  </frame>
+ </sequence>
+</collisionareas>

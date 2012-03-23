@@ -1,0 +1,48 @@
+<!DOCTYPE SpriteDecomposer>
+<sprites image="minotaur.png" transparentColor="FF00FF">
+ <animation title="stand" delay="150">
+  <cut w="77" x="3" y="3" h="80" anchor_x="46" row="1" anchor_y="78" col="1"/>
+ </animation>
+ <animation title="walk" delay="150">
+  <cut w="77" x="0" y="87" h="80" anchor_x="47" row="1" anchor_y="78" col="1"/>
+  <cut w="78" x="80" y="90" h="78" anchor_x="48" row="1" anchor_y="78" col="1"/>
+  <cut w="77" x="166" y="87" h="79" anchor_x="47" row="1" anchor_y="77" col="1"/>
+  <cut w="77" x="255" y="89" h="80" anchor_x="47" row="1" anchor_y="78" col="1"/>
+  <cut w="77" x="335" y="89" h="80" anchor_x="47" row="1" anchor_y="78" col="1"/>
+ </animation>
+ <animation title="attack" delay="150">
+  <cut w="89" x="99" y="179" h="83" anchor_x="25" row="1" anchor_y="81" col="1"/>
+  <cut w="80" x="192" y="186" h="74" anchor_x="47" row="1" anchor_y="72" col="1"/>
+  <cut w="72" x="293" y="186" h="74" anchor_x="31" row="1" anchor_y="72" col="1"/>
+ </animation>
+ <animation title="hit" delay="150">
+  <cut w="68" x="319" y="273" h="88" anchor_x="25" row="1" anchor_y="86" col="1"/>
+ </animation>
+ <animation title="jump" delay="150">
+  <cut w="77" x="4" y="559" h="88" anchor_x="49" row="1" anchor_y="86" col="1"/>
+ </animation>
+ <animation title="land" delay="150">
+  <cut w="80" x="85" y="577" h="67" anchor_x="53" row="1" anchor_y="65" col="1"/>
+ </animation>
+ <animation title="rush" delay="150">
+  <cut w="82" x="3" y="463" h="92" anchor_x="51" row="1" anchor_y="88" col="1"/>
+  <cut w="65" x="86" y="461" h="94" anchor_x="50" row="1" anchor_y="88" col="1"/>
+  <cut w="85" x="153" y="459" h="90" anchor_x="50" row="1" anchor_y="88" col="1"/>
+ </animation>
+ <animation title="jumpattack" delay="150">
+  <cut w="80" x="3" y="744" h="88" anchor_x="44" row="1" anchor_y="86" col="1"/>
+ </animation>
+ <animation title="fall" delay="150">
+  <cut w="88" x="311" y="456" h="59" anchor_x="17" row="1" anchor_y="48" col="1"/>
+  <cut w="76" x="307" y="519" h="53" anchor_x="17" row="1" anchor_y="49" col="1"/>
+ </animation>
+ <animation title="lie" delay="150">
+  <cut w="92" x="304" y="577" h="33" anchor_x="13" row="1" anchor_y="29" col="1"/>
+ </animation>
+ <animation title="raise" delay="150">
+  <cut w="67" x="349" y="369" h="72" anchor_x="25" row="1" anchor_y="70" col="1"/>
+ </animation>
+ <animation title="guard" delay="150">
+  <cut w="65" x="99" y="749" h="78" anchor_x="33" row="1" anchor_y="76" col="1"/>
+ </animation>
+</sprites>
