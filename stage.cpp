@@ -171,18 +171,6 @@ void Stage::update(Uint32 frameStamp)
     p1y += p1vy;
     p2y += p2vy;
 
-    if (p1x < 20) {
-        p1x = 20;
-    }
-    if (p1x > 730) {
-        p1x = 730;
-    }
-    if (p2x < 20) {
-        p2x = 20;
-    }
-    if (p2x > 730) {
-        p2x = 730;
-    }
     if (p1x < edgeleft) {
         p1x = edgeleft;
     }
