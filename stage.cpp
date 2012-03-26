@@ -65,6 +65,11 @@ void Stage::update(Uint32 frameStamp)
     float p2x = player2->getPositionX();
     float p2y = player2->getPositionY();
 
+    int edgeleft = std::max(p1x, p2x) - 380;
+    int edgeright = std::min(p1x, p2x) + 380;
+    edgeleft = std::max(edgeleft, 20);
+    edgeright = std::min(edgeright, 730);
+
     int rectsize1 = 0, rectsize2 = 0;
     const SDL_Rect *area1 = NULL, *area2 = NULL;
     bool p1hit = false, p2hit = false;
@@ -178,6 +183,18 @@ void Stage::update(Uint32 frameStamp)
     if (p2x > 730) {
         p2x = 730;
     }
+    if (p1x < edgeleft) {
+        p1x = edgeleft;
+    }
+    if (p1x > edgeright) {
+        p1x = edgeright;
+    }
+    if (p2x < edgeleft) {
+        p2x = edgeleft;
+    }
+    if (p2x > edgeright) {
+        p2x = edgeright;
+    }
 
     if (p1y > groundline) {
         p1y = groundline;
@@ -192,17 +209,27 @@ void Stage::update(Uint32 frameStamp)
     player2->setPosition(p2x, p2y);
 
     // scroll
-    if (player1->getPositionScreenCoor().x < 90) {
-        position.x = (position.x + 90 - player1->getPositionScreenCoor().x);
-    }
-    if (player1->getPositionScreenCoor().x > 330) {
-        position.x = (position.x + 330 - player1->getPositionScreenCoor().x);
-    }
-    if (player2->getPositionScreenCoor().x < 90) {
-        position.x = (position.x + 90 - player2->getPositionScreenCoor().x);
-    }
-    if (player2->getPositionScreenCoor().x > 330) {
-        position.x = (position.x + 330 - player2->getPositionScreenCoor().x);
+    int p1ScreenX = player1->getPositionScreenCoor().x;
+    int p2ScreenX = player2->getPositionScreenCoor().x;
+    int distance = abs(p1ScreenX - p2ScreenX);
+
+    if (distance < 240) {
+        if (p1ScreenX < 90) {
+            position.x = (position.x + 90 - p1ScreenX);
+        }
+        if (p1ScreenX > 330) {
+            position.x = (position.x + 330 - p1ScreenX);
+        }
+        if (p2ScreenX < 90) {
+            position.x = (position.x + 90 - p2ScreenX);
+        }
+        if (p2ScreenX > 330) {
+            position.x = (position.x + 330 - p2ScreenX);
+        }
+    } else if (distance <= 380) {
+        position.x = - ((p1x + p2x) / 2 - 210);
+    } else {
+        printf("Can't be here!\n");
     }
 
     if (position.x > 0) {
