@@ -189,14 +189,14 @@ void Connection::Update( float deltaTime )
     {
         if ( state == Connecting )
         {
-            //printf( "connect timed out\n" );
+            printf( "connect timed out\n" );
             ClearData();
             state = ConnectFail;
             OnDisconnect();
         }
         else if ( state == Connected )
         {
-            //printf( "connection timed out\n" );
+            printf( "connection timed out\n" );
             ClearData();
             if ( state == Connecting )
                 state = ConnectFail;
@@ -573,7 +573,7 @@ bool ReliableConnection::SendPacket( const void *data, int size )
 int ReliableConnection::ReceivePacket( void *data, int size )
 {
     const int header = 12;
-    if ( size <= header ) {
+    if ( size <= 0 ) {
         return 0;
     }
     unsigned char packet[header+size];
@@ -761,6 +761,7 @@ int main(int argc, char **argv)
             memset(buff, 0, sizeof(buff));
             snprintf(buff, sizeof(buff), "%d", count);
             if (!connection.SendPacket(buff, strlen(buff))) {
+                printf("send error\n");
             }
             memset(buff, 0, sizeof(buff));
             if (connection.ReceivePacket(buff, sizeof(buff)) > 0) {

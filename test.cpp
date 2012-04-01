@@ -12,6 +12,7 @@
 #include "healthbar.h"
 #include "ai.h"
 #include "stage.h"
+#include "netudp.h"
 
 using namespace dragonfighting;
 
@@ -20,6 +21,7 @@ int main(int argc, char **argv)
 {
     int exited = 0;
     SDL_Surface *screen = NULL;
+    bool paused = false;
     Uint32 interval = 1000/60;
     Uint32 frame = 0;
     Uint32 oldtime = SDL_GetTicks();
@@ -47,6 +49,8 @@ int main(int argc, char **argv)
 
     CtrlKeyReaderWriter sdlkeyrw1;
     CtrlKeyReaderWriter sdlkeyrw2;
+    CtrlKeyReaderWriter *localKeyReaderWriter = NULL;
+    CtrlKeyReaderWriter *remoteKeyReaderWriter = NULL;
 
     // Init key filter
     KeyFilter keyFilter1;
@@ -76,115 +80,55 @@ int main(int argc, char **argv)
     keyFilter2.addCommand("2A", cmd[5], 2);
     keyFilter2.addCommand("3A", cmd[6], 2);
 
+    //Init network
+    enum Mode
+    {
+        AIcontrol,
+        Client,
+        Server
+    };
 
-#if 0
-    SDL_Surface *imgloaded = NULL;
-    // Init charactor
-    //Character p1;
-    Sprite p1;
-    p1.setName("p1");
-    SDL_Surface *p1Image = NULL;
-    int indexs_p1[30];
-    for (unsigned int i=0; i<sizeof(indexs_p1)/sizeof(int); i++) {
-        indexs_p1[i] = i;
+    Mode mode = AIcontrol;
+    Address address;
+
+    if ( argc >= 2 ) {
+        if (strcmp(argv[1], "server") == 0) {
+            mode = Server;
+            address = Address(127,0,0,1,26801);
+        } else if (strcmp(argv[1], "client") == 0) {
+            mode = Client;
+            address = Address(127,0,0,1,26800);
+        } else {
+            printf("Usage:\n");
+            return 1;
+        }
+    } else {
+        mode = AIcontrol;
     }
-    SDL_Rect rect = {19, 21, 119, 90};
-    SDL_Rect anchorpoint = {0,0,0,0};
-    SDL_Rect hitrects[30];
-    SDL_Rect attackrects[30];
 
-    p1.setKeyFilter(&keyFilter1);
-    p1.setInputer(&sdlkeyrw1);
+    if ( !InitializeSockets() ) {
+        printf( "failed to initialize sockets\n" );
+        return 1;
+    }
+    const int ProtocolId = 0x11223344;
+    const float TimeOut = 5.0f;
+    const float DeltaTime = interval / 1000;
+    bool connected = false;
 
-    imgloaded = IMG_Load("./firedragon.png");
-    p1Image = SDL_DisplayFormat(imgloaded);
-    //SDL_SetAlpha(p1Image, SDL_SRCALPHA, 0x80);
-    SDL_SetColorKey( p1Image, SDL_SRCCOLORKEY, SDL_MapRGB( p1Image->format, 0, 0, 0 ) );
-    SDL_FreeSurface(imgloaded);
+    ReliableConnection connection(ProtocolId, TimeOut);
 
-    p1.setFullImage(p1Image);
+    if (!connection.Start(mode == Server ? 26800 : 26801)) {
+        printf( "failed to start\n" );
+        return -1;
+    }
 
-    rect.x = 19; rect.y = 21; rect.w = 119; rect.h = 90;
-    anchorpoint.x = 64; anchorpoint.y = 87;
-    p1.addFrame(rect, anchorpoint);
-    rect.x += rect.w;
-    rect.w = 117;
-    anchorpoint.x = 64; anchorpoint.y = 87;
-    p1.addFrame(rect, anchorpoint);
-    rect.x += rect.w;
-    rect.w = 120;
-    anchorpoint.x = 64; anchorpoint.y = 87;
-    p1.addFrame(rect, anchorpoint);
-    rect.x += rect.w;
-    anchorpoint.x = 64; anchorpoint.y = 87;
-    p1.addFrame(rect, anchorpoint);
-    p1.addSequence("stand", 20, AnimationSequence::LOOP, indexs_p1, 4);
-
-    //TODO
-    hitrects[0] = {6,4,73,32};
-    hitrects[1] = {34,36,54,48};
-    p1.addCollisionRects(hitrects, 2, NULL, 0);
-    p1.addCollisionSequence("stand", 20, indexs_p1, 1);
-
-    rect.x = 27; rect.y = 120; rect.w = 109; rect.h = 108;
-    anchorpoint.x = 68; anchorpoint.y = 106;
-    p1.addFrame(rect, anchorpoint);
-    rect.x = 145; rect.y = 140; rect.w = 132; rect.h = 89;
-    anchorpoint.x = 99; anchorpoint.y = 87;
-    p1.addFrame(rect, anchorpoint);
-    rect.x = 296; rect.y = 144; rect.w = 120; rect.h = 85;
-    anchorpoint.x = 87; anchorpoint.y = 83;
-    p1.addFrame(rect, anchorpoint);
-    p1.addSequence("attack", 10, AnimationSequence::ONCE, indexs_p1+4, 3);
-
-    //TODO
-    hitrects[0] = {27,26,42,72};
-    hitrects[1] = {69,48,13,52};
-    attackrects[0] = {0,0,31,38};
-    p1.addCollisionRects(hitrects, 2, attackrects, 1);
-    hitrects[0] = {33,14,59,29};
-    hitrects[1] = {51,37,59,47};
-    attackrects[0] = {0,49,27,20};
-    attackrects[1] = {17,31,21,19};
-    p1.addCollisionRects(hitrects, 2, attackrects, 2);
-    hitrects[0] = {33,14,59,29};
-    hitrects[1] = {51,37,59,47};
-    attackrects[0] = {0,49,27,20};
-    attackrects[1] = {18,31,19,19};
-    p1.addCollisionRects(hitrects, 2, attackrects, 2);
-    p1.addCollisionSequence("attack", 10, indexs_p1+1, 3);
-
-    rect.x = 27; rect.y = 477; rect.w = 115; rect.h = 84;
-    anchorpoint.x = 80; anchorpoint.y = 83;
-    p1.addFrame(rect, anchorpoint);
-    rect.x = 148; rect.y = 478; rect.w = 115; rect.h = 84;
-    anchorpoint.x = 80; anchorpoint.y = 83;
-    p1.addFrame(rect, anchorpoint);
-    rect.x = 267; rect.y = 480; rect.w = 115; rect.h = 77;
-    anchorpoint.x = 80; anchorpoint.y = 83;
-    p1.addFrame(rect, anchorpoint);
-    rect.x = 389; rect.y = 484; rect.w = 115; rect.h = 76;
-    anchorpoint.x = 80; anchorpoint.y = 83;
-    p1.addFrame(rect, anchorpoint);
-    rect.x = 506; rect.y = 481; rect.w = 115; rect.h = 84;
-    anchorpoint.x = 80; anchorpoint.y = 83;
-    p1.addFrame(rect, anchorpoint);
-    rect.x = 33; rect.y = 577; rect.w = 115; rect.h = 84;
-    anchorpoint.x = 80; anchorpoint.y = 83;
-    p1.addFrame(rect, anchorpoint);
-    p1.addSequence("walk", 8, AnimationSequence::LOOP, indexs_p1+7, 5);
-
-    p1.addSequence("hit", 8, AnimationSequence::ONCE, indexs_p1, 1);
-    p1.addCollisionSequence("hit", 10, indexs_p1, 1);
-
-    p1.setDefaultSequence("stand");
-    p1.playSequenceBackorder("stand");
-    p1.useCollisionSequence("stand");
-    p1.setPosition(200.0f, 400.0f);
-    p1.setFlipHorizontal(true);
-    p1.setFacing(Character::RIGHT);
-    p1.setSpeed(2.0f);
-#endif
+    if (mode == Server) {
+        connection.Listen();
+        printf("Listening...\n");
+    } else {
+        connection.Connect(address);
+        printf("Connecting...\n");
+    }
 
     //Character p1;
     Sprite *p1 = SpriteFactory::loadSprite("data", "minotaur");
@@ -217,13 +161,73 @@ int main(int argc, char **argv)
     // Init AI
     AI ai2 = AI(p2, p1);
 
+    if (mode == Server) {
+        localKeyReaderWriter = &sdlkeyrw1;
+        remoteKeyReaderWriter = &sdlkeyrw2;
+    } else if (mode == Client) {
+        localKeyReaderWriter = &sdlkeyrw2;
+        remoteKeyReaderWriter = &sdlkeyrw1;
+    } else {
+        localKeyReaderWriter = &sdlkeyrw1;
+        remoteKeyReaderWriter = &sdlkeyrw2;
+    }
+
+    char buff[16];
+    int count = 0;
+    while(mode != AIcontrol && exited==0) {
+        SDL_Event event;
+        if (SDL_PollEvent(&event) == 1) {
+            if((event.type==SDL_KEYDOWN && event.key.keysym.sym==SDLK_ESCAPE) || (event.type==SDL_QUIT)) exited=1;
+        }
+        if ( !connected && connection.IsConnected() ) {
+            printf( "client connected to server\n" );
+            connected = true;
+            break;
+        }
+
+        if ( !connected && connection.IsConnectFailed() ) {
+            printf( "connection failed\n" );
+            exited = 1;
+            break;
+        }
+
+        memset(buff, 0, sizeof(buff));
+        snprintf(buff, sizeof(buff), "%d", count);
+        if (!connection.SendPacket(buff, strlen(buff))) {
+        }
+        memset(buff, 0, sizeof(buff));
+        if (connection.ReceivePacket(buff, sizeof(buff)) > 0) {
+            printf("recv:%s\n", buff);
+        }
+
+        connection.Update(DeltaTime);
+        count++;
+        SDL_Delay(interval);
+    }
+
+    struct Ctrl_KeyEvent ctrlevent;
     while(exited==0)
     {
-        // AI
-        ai2.update(frame);
+        // Net
+        if ( mode == Server && connected && !connection.IsConnected() ) {
+            printf( "reset flow control\n" );
+            connected = false;
+        }
+
+        if (mode == Client) {
+            if (connection.ReceivePacket(&ctrlevent, sizeof(ctrlevent)) > 0) {
+                if (ctrlevent.type != Ctrl_KEYNONE && ctrlevent.frameStamp >= frame) {
+                    printf("recv key: %d, packetframe: %d, localframe: %d\n", ctrlevent.key, ctrlevent.frameStamp, frame);
+                    remoteKeyReaderWriter->writeEvent(&ctrlevent);
+                }
+            } else {
+                printf("recv error\n");
+            }
+        } else if (mode == Server) {
+        } else if (mode == AIcontrol) {
+        }
 
         //----input----
-        struct Ctrl_KeyEvent ctrlevent;
         SDL_Event event;
         if (SDL_PollEvent(&event) == 1) {
             ctrlevent.frameStamp = frame;
@@ -232,47 +236,68 @@ int main(int argc, char **argv)
             else if (event.type==SDL_KEYDOWN)
             {
                 ctrlevent.type = Ctrl_KEYDOWN;
-                //ctrlevent.key = keyconv.convert(event.key.keysym.sym, p1->getFacing() == Character::LEFT);
                 ctrlevent.key = keyconv.convert(event.key.keysym.sym);
                 if (ctrlevent.key != 0) {
-                    sdlkeyrw1.writeEvent(&ctrlevent);
+                    localKeyReaderWriter->writeEvent(&ctrlevent);
                 }
-                //ctrlevent.key = keyconv.convert(event.key.keysym.sym, p2->getFacing() == Character::LEFT);
-                //sdlkeyrw2.writeEvent(&ctrlevent);
             }
             else if (event.type==SDL_KEYUP)
             {
                 ctrlevent.type = Ctrl_KEYUP;
-                //ctrlevent.key = keyconv.convert(event.key.keysym.sym, p1->getFacing() == Character::LEFT);
                 ctrlevent.key = keyconv.convert(event.key.keysym.sym);
                 if (ctrlevent.key != 0) {
-                    sdlkeyrw1.writeEvent(&ctrlevent);
+                    localKeyReaderWriter->writeEvent(&ctrlevent);
                 }
-                //ctrlevent.key = keyconv.convert(event.key.keysym.sym, p2->getFacing() == Character::LEFT);
-                //sdlkeyrw2.writeEvent(&ctrlevent);
+            }
+        } else {
+            ctrlevent.type = Ctrl_KEYNONE;
+        }
+
+        if (mode == AIcontrol) {
+            if (ai2.pollEvent(&ctrlevent)) {
+                ctrlevent.frameStamp = frame;
+                ctrlevent.controler = 2;
+                remoteKeyReaderWriter->writeEvent(&ctrlevent);
+            }
+        } else {
+            if (!connection.SendPacket(&ctrlevent, sizeof(ctrlevent))) {
+                printf("send error\n");
+            }
+            if (connection.ReceivePacket(&ctrlevent, sizeof(ctrlevent)) > 0) {
+                if (ctrlevent.type != Ctrl_KEYNONE && ctrlevent.frameStamp >= frame) {
+                    printf("recv key: %d, packetframe: %d, localframe: %d\n", ctrlevent.key, ctrlevent.frameStamp, frame);
+                    remoteKeyReaderWriter->writeEvent(&ctrlevent);
+                }
+            } else {
+                printf("recv error\n");
             }
         }
 
-        if (ai2.pollEvent(&ctrlevent)) {
-            ctrlevent.frameStamp = frame;
-            ctrlevent.controler = 2;
-            sdlkeyrw2.writeEvent(&ctrlevent);
+
+        if (!paused) {
+            // ----logic----
+            firstStage.update(frame);
+            // AI
+            if (mode == AIcontrol) {
+                ai2.update(frame);
+            }
+            // ----frame control----
+            frame++;
         }
 
-        // ----logic----
-        firstStage.update(frame);
+        connection.Update(DeltaTime);
 
         // ----draw----
         SDL_FillRect( screen, NULL, 0x00008080 );
         //SDL_FillRect( screen, &rect, color );
-        firstStage.draw(screen);
+        //firstStage.draw(screen);
         SDL_Flip(screen);
 
-        // ----frame control----
-        frame++;
+
         newtime = SDL_GetTicks();
-        if (newtime - oldtime < interval)
+        if (newtime - oldtime < interval) {
             SDL_Delay(interval - newtime + oldtime);
+        }
         oldtime = SDL_GetTicks();
     }
 

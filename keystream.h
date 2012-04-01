@@ -2,6 +2,7 @@
 #define _KEY_STREAM_H_
 
 #include <stdio.h>
+#include <list>
 #include <SDL/SDL.h>
 #include "ftgkeys.h"
 
@@ -53,8 +54,7 @@ public:
 class CtrlKeyReaderWriter : public CtrlKeyReader, public CtrlKeyWriter
 {
 protected:
-    struct Ctrl_KeyEvent keyEvent;
-    bool isEmpty;
+    std::list<struct Ctrl_KeyEvent> keyEventList;
 
 public:
     CtrlKeyReaderWriter();

@@ -6,10 +6,8 @@
 namespace dragonfighting {
 
 
-CtrlKeyReaderWriter::CtrlKeyReaderWriter() :
-    isEmpty(true)
+CtrlKeyReaderWriter::CtrlKeyReaderWriter()
 {
-    memset(&keyEvent, 0, sizeof(struct Ctrl_KeyEvent));
 }
 
 CtrlKeyReaderWriter::~CtrlKeyReaderWriter()
@@ -18,19 +16,16 @@ CtrlKeyReaderWriter::~CtrlKeyReaderWriter()
 
 void CtrlKeyReaderWriter::writeEvent(struct Ctrl_KeyEvent *event)
 {
-    assert(isEmpty == true);
-
-    this->keyEvent = *event;
-    isEmpty = false;
+    this->keyEventList.push_back(*event);
 }
 
 int CtrlKeyReaderWriter::readEvent(struct Ctrl_KeyEvent *event, Uint32 frameStamp)
 {
-    if (isEmpty) return 0;
+    if (keyEventList.size() == 0) return 0;
 
-    if (frameStamp == this->keyEvent.frameStamp) {
-        *event = this->keyEvent;
-        isEmpty = true;
+    if (frameStamp == this->keyEventList.front().frameStamp) {
+        *event = this->keyEventList.front();
+        this->keyEventList.pop_front();
         return 1;
     }
 
