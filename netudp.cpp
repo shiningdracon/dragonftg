@@ -649,6 +649,117 @@ void ReliableConnection::OnDisconnect()
 
 using namespace dragonfighting;
 
+//#define check(n) if ( !n ) { printf( "check failed\n" ); exit(1); }
+#define check assert
+int main(int argc, char **argv)
+{
+	const int ServerPort = 30000;
+	const int ClientPort = 30001;
+	const int ProtocolId = 0x11112222;
+	const float DeltaTime = 1.0f;
+	const float TimeOut = 5.0f;
+	const unsigned int PacketCount = 100;
+	
+	ReliableConnection client( ProtocolId, TimeOut );
+	ReliableConnection server( ProtocolId, TimeOut );
+	
+	check( client.Start( ClientPort ) );
+	check( server.Start( ServerPort ) );
+	
+	client.Connect( Address(127,0,0,1,ServerPort ) );
+	server.Listen();
+		
+	bool clientAckedPackets[PacketCount];
+ 	bool serverAckedPackets[PacketCount];
+	for ( unsigned int i = 0; i < PacketCount; ++i )
+	{
+		clientAckedPackets[i] = false;
+		serverAckedPackets[i] = false;
+	}
+	
+	bool allPacketsAcked = false;
+
+	while ( true )
+	{
+		if ( !client.IsConnecting() && client.IsConnectFailed() )
+			break;
+			
+		if ( allPacketsAcked )
+			break;
+		
+		unsigned char packet[256];
+		for ( unsigned int i = 0; i < sizeof(packet); ++i )
+			packet[i] = (unsigned char) i;
+		
+		server.SendPacket( packet, sizeof(packet) );
+		client.SendPacket( packet, sizeof(packet) );
+		
+		while ( true )
+		{
+			unsigned char packet[256];
+			int bytes_read = client.ReceivePacket( packet, sizeof(packet) );
+			if ( bytes_read == 0 )
+				break;
+			check( bytes_read == sizeof(packet) );
+			for ( unsigned int i = 0; i < sizeof(packet); ++i )
+				check( packet[i] == (unsigned char) i );
+		}
+
+		while ( true )
+		{
+			unsigned char packet[256];
+			int bytes_read = server.ReceivePacket( packet, sizeof(packet) );
+			if ( bytes_read == 0 )
+				break;
+			check( bytes_read == sizeof(packet) );
+			for ( unsigned int i = 0; i < sizeof(packet); ++i )
+				check( packet[i] == (unsigned char) i );
+		}
+		
+		int ack_count = 0;
+		unsigned int * acks = NULL;
+		client.GetReliabilitySystem().GetAcks( &acks, ack_count );
+		check( ack_count == 0 || ack_count != 0 && acks );
+		for ( int i = 0; i < ack_count; ++i )
+		{
+			unsigned int ack = acks[i];
+			if ( ack < PacketCount )
+			{
+				check( clientAckedPackets[ack] == false );
+				clientAckedPackets[ack] = true;
+			}
+		}
+
+		server.GetReliabilitySystem().GetAcks( &acks, ack_count );
+		check( ack_count == 0 || ack_count != 0 && acks );
+		for ( int i = 0; i < ack_count; ++i )
+		{
+			unsigned int ack = acks[i];
+			if ( ack < PacketCount )
+			{
+				check( serverAckedPackets[ack] == false );
+				serverAckedPackets[ack] = true;
+			}
+		}
+		
+		unsigned int clientAckCount = 0;
+		unsigned int serverAckCount = 0;
+		for ( unsigned int i = 0; i < PacketCount; ++i )
+		{
+ 			clientAckCount += clientAckedPackets[i];
+ 			serverAckCount += serverAckedPackets[i];
+		}
+		allPacketsAcked = clientAckCount == PacketCount && serverAckCount == PacketCount;
+		
+		client.Update( DeltaTime );
+		server.Update( DeltaTime );
+	}
+	
+	check( client.IsConnected() );
+	check( server.IsConnected() );
+}
+
+#if 0
 int main(int argc, char **argv)
 {
     enum Mode
@@ -778,4 +889,7 @@ int main(int argc, char **argv)
 
     return 0;
 }
+#endif
+
+
 #endif

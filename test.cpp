@@ -16,7 +16,6 @@
 
 using namespace dragonfighting;
 
-
 int main(int argc, char **argv)
 {
     int exited = 0;
@@ -125,7 +124,7 @@ int main(int argc, char **argv)
     if (mode == Server) {
         connection.Listen();
         printf("Listening...\n");
-    } else {
+    } else if (mode == Client) {
         connection.Connect(address);
         printf("Connecting...\n");
     }
@@ -172,8 +171,8 @@ int main(int argc, char **argv)
         remoteKeyReaderWriter = &sdlkeyrw2;
     }
 
-    char buff[16];
-    int count = 0;
+    struct Ctrl_KeyEvent ctrlevent;
+    // trying connection
     while(mode != AIcontrol && exited==0) {
         SDL_Event event;
         if (SDL_PollEvent(&event) == 1) {
@@ -191,23 +190,23 @@ int main(int argc, char **argv)
             break;
         }
 
-        memset(buff, 0, sizeof(buff));
-        snprintf(buff, sizeof(buff), "%d", count);
-        if (!connection.SendPacket(buff, strlen(buff))) {
+        memset(&ctrlevent, 0, sizeof(ctrlevent));
+        if (!connection.SendPacket(&ctrlevent, sizeof(ctrlevent))) {
         }
-        memset(buff, 0, sizeof(buff));
-        if (connection.ReceivePacket(buff, sizeof(buff)) > 0) {
-            printf("recv:%s\n", buff);
+        memset(&ctrlevent, 0, sizeof(ctrlevent));
+        if (connection.ReceivePacket(&ctrlevent, sizeof(ctrlevent)) > 0) {
+            printf("recved\n");
         }
 
         connection.Update(DeltaTime);
-        count++;
         SDL_Delay(interval);
     }
 
-    struct Ctrl_KeyEvent ctrlevent;
+    // main loop
+    list<struct Ctrl_KeyEvent> pendingAcks;
     while(exited==0)
     {
+        memset(&ctrlevent, 0, sizeof(ctrlevent));
         // Net
         if ( mode == Server && connected && !connection.IsConnected() ) {
             printf( "reset flow control\n" );
@@ -223,56 +222,119 @@ int main(int argc, char **argv)
             } else {
                 printf("recv error\n");
             }
-        } else if (mode == Server) {
-        } else if (mode == AIcontrol) {
-        }
 
-        //----input----
-        SDL_Event event;
-        if (SDL_PollEvent(&event) == 1) {
-            ctrlevent.frameStamp = frame;
-            ctrlevent.controler = 1;
-            if((event.type==SDL_KEYDOWN && event.key.keysym.sym==SDLK_ESCAPE) || (event.type==SDL_QUIT)) exited=1;
-            else if (event.type==SDL_KEYDOWN)
-            {
-                ctrlevent.type = Ctrl_KEYDOWN;
-                ctrlevent.key = keyconv.convert(event.key.keysym.sym);
-                if (ctrlevent.key != 0) {
-                    localKeyReaderWriter->writeEvent(&ctrlevent);
-                }
-            }
-            else if (event.type==SDL_KEYUP)
-            {
-                ctrlevent.type = Ctrl_KEYUP;
-                ctrlevent.key = keyconv.convert(event.key.keysym.sym);
-                if (ctrlevent.key != 0) {
-                    localKeyReaderWriter->writeEvent(&ctrlevent);
-                }
-            }
-        } else {
-            ctrlevent.type = Ctrl_KEYNONE;
-        }
+            int ack_count = 0;
+            unsigned int * acks = NULL;
+            connection.GetReliabilitySystem().GetAcks( &acks, ack_count );
 
-        if (mode == AIcontrol) {
-            if (ai2.pollEvent(&ctrlevent)) {
+            //----input----
+            SDL_Event event;
+            if (SDL_PollEvent(&event) == 1) {
                 ctrlevent.frameStamp = frame;
-                ctrlevent.controler = 2;
-                remoteKeyReaderWriter->writeEvent(&ctrlevent);
+                ctrlevent.controler = 1;
+                if((event.type==SDL_KEYDOWN && event.key.keysym.sym==SDLK_ESCAPE) || (event.type==SDL_QUIT)) exited=1;
+                else if (event.type==SDL_KEYDOWN)
+                {
+                    ctrlevent.type = Ctrl_KEYDOWN;
+                    ctrlevent.key = keyconv.convert(event.key.keysym.sym);
+                    if (ctrlevent.key != 0) {
+                        localKeyReaderWriter->writeEvent(&ctrlevent);
+                        pendingAcks.push_back(ctrlevent);
+                    }
+                }
+                else if (event.type==SDL_KEYUP)
+                {
+                    ctrlevent.type = Ctrl_KEYUP;
+                    ctrlevent.key = keyconv.convert(event.key.keysym.sym);
+                    if (ctrlevent.key != 0) {
+                        localKeyReaderWriter->writeEvent(&ctrlevent);
+                        pendingAcks.push_back(ctrlevent);
+                    }
+                }
+            } else {
+                ctrlevent.type = Ctrl_KEYNONE;
             }
-        } else {
             if (!connection.SendPacket(&ctrlevent, sizeof(ctrlevent))) {
                 printf("send error\n");
             }
+        } else if (mode == Server) {
+            //----input----
+            SDL_Event event;
+            if (SDL_PollEvent(&event) == 1) {
+                ctrlevent.frameStamp = frame;
+                ctrlevent.controler = 1;
+                if((event.type==SDL_KEYDOWN && event.key.keysym.sym==SDLK_ESCAPE) || (event.type==SDL_QUIT)) exited=1;
+                else if (event.type==SDL_KEYDOWN)
+                {
+                    ctrlevent.type = Ctrl_KEYDOWN;
+                    ctrlevent.key = keyconv.convert(event.key.keysym.sym);
+                    if (ctrlevent.key != 0) {
+                        localKeyReaderWriter->writeEvent(&ctrlevent);
+                        pendingAcks.push_back(ctrlevent);
+                    }
+                }
+                else if (event.type==SDL_KEYUP)
+                {
+                    ctrlevent.type = Ctrl_KEYUP;
+                    ctrlevent.key = keyconv.convert(event.key.keysym.sym);
+                    if (ctrlevent.key != 0) {
+                        localKeyReaderWriter->writeEvent(&ctrlevent);
+                        pendingAcks.push_back(ctrlevent);
+                    }
+                }
+            } else {
+                ctrlevent.type = Ctrl_KEYNONE;
+            }
+            if (!connection.SendPacket(&ctrlevent, sizeof(ctrlevent))) {
+                printf("send error\n");
+            }
+            
+            static Uint32 clientFrame = 0;
             if (connection.ReceivePacket(&ctrlevent, sizeof(ctrlevent)) > 0) {
-                if (ctrlevent.type != Ctrl_KEYNONE && ctrlevent.frameStamp >= frame) {
+                if (ctrlevent.frameStamp > clientFrame) {
+                    clientFrame = ctrlevent.frameStamp;
+                }
+                if (ctrlevent.type != Ctrl_KEYNONE && ctrlevent.frameStamp == clientFrame) {
                     printf("recv key: %d, packetframe: %d, localframe: %d\n", ctrlevent.key, ctrlevent.frameStamp, frame);
+                    ctrlevent.frameStamp = frame;
                     remoteKeyReaderWriter->writeEvent(&ctrlevent);
                 }
             } else {
                 printf("recv error\n");
             }
-        }
+        } else if (mode == AIcontrol) {
+            //----input----
+            SDL_Event event;
+            if (SDL_PollEvent(&event) == 1) {
+                ctrlevent.frameStamp = frame;
+                ctrlevent.controler = 1;
+                if((event.type==SDL_KEYDOWN && event.key.keysym.sym==SDLK_ESCAPE) || (event.type==SDL_QUIT)) exited=1;
+                else if (event.type==SDL_KEYDOWN)
+                {
+                    ctrlevent.type = Ctrl_KEYDOWN;
+                    ctrlevent.key = keyconv.convert(event.key.keysym.sym);
+                    if (ctrlevent.key != 0) {
+                        localKeyReaderWriter->writeEvent(&ctrlevent);
+                    }
+                }
+                else if (event.type==SDL_KEYUP)
+                {
+                    ctrlevent.type = Ctrl_KEYUP;
+                    ctrlevent.key = keyconv.convert(event.key.keysym.sym);
+                    if (ctrlevent.key != 0) {
+                        localKeyReaderWriter->writeEvent(&ctrlevent);
+                    }
+                }
+            } else {
+                ctrlevent.type = Ctrl_KEYNONE;
+            }
 
+            if (ai2.pollEvent(&ctrlevent)) {
+                ctrlevent.frameStamp = frame;
+                ctrlevent.controler = 2;
+                remoteKeyReaderWriter->writeEvent(&ctrlevent);
+            }
+        }
 
         if (!paused) {
             // ----logic----
@@ -290,7 +352,7 @@ int main(int argc, char **argv)
         // ----draw----
         SDL_FillRect( screen, NULL, 0x00008080 );
         //SDL_FillRect( screen, &rect, color );
-        //firstStage.draw(screen);
+        firstStage.draw(screen);
         SDL_Flip(screen);
 
 
