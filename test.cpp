@@ -113,6 +113,8 @@ int main(int argc, char **argv)
     const float TimeOut = 5.0f;
     const float DeltaTime = interval / 1000;
     bool connected = false;
+    const int maxFrameDis = 30; // 30f = 0.5sec
+    const int minFrameDis = 5;
 
     ReliableConnection connection(ProtocolId, TimeOut);
 
@@ -203,7 +205,13 @@ int main(int argc, char **argv)
     }
 
     // main loop
-    list<struct Ctrl_KeyEvent> pendingAcks;
+    struct PendingAckNode {
+        struct Ctrl_KeyEvent event;
+        unsigned int sequence;
+    };
+    struct PendingAckNode pendingAck;
+    memset(&pendingAck, 0, sizeof(pendingAck));
+    unsigned int localSequence = 0;
     while(exited==0)
     {
         memset(&ctrlevent, 0, sizeof(ctrlevent));
@@ -213,9 +221,14 @@ int main(int argc, char **argv)
             connected = false;
         }
 
+        if (maxFrameDis - minFrameDis) {}
         if (mode == Client) {
+            static Uint32 serverFrame = 0;
             if (connection.ReceivePacket(&ctrlevent, sizeof(ctrlevent)) > 0) {
-                if (ctrlevent.type != Ctrl_KEYNONE && ctrlevent.frameStamp >= frame) {
+                if (ctrlevent.frameStamp > serverFrame) {
+                    serverFrame = ctrlevent.frameStamp;
+                }
+                if (ctrlevent.type != Ctrl_KEYNONE && ctrlevent.frameStamp == serverFrame) {
                     printf("recv key: %d, packetframe: %d, localframe: %d\n", ctrlevent.key, ctrlevent.frameStamp, frame);
                     remoteKeyReaderWriter->writeEvent(&ctrlevent);
                 }
@@ -226,65 +239,82 @@ int main(int argc, char **argv)
             int ack_count = 0;
             unsigned int * acks = NULL;
             connection.GetReliabilitySystem().GetAcks( &acks, ack_count );
-
-            //----input----
-            SDL_Event event;
-            if (SDL_PollEvent(&event) == 1) {
-                ctrlevent.frameStamp = frame;
-                ctrlevent.controler = 1;
-                if((event.type==SDL_KEYDOWN && event.key.keysym.sym==SDLK_ESCAPE) || (event.type==SDL_QUIT)) exited=1;
-                else if (event.type==SDL_KEYDOWN)
-                {
-                    ctrlevent.type = Ctrl_KEYDOWN;
-                    ctrlevent.key = keyconv.convert(event.key.keysym.sym);
-                    if (ctrlevent.key != 0) {
-                        localKeyReaderWriter->writeEvent(&ctrlevent);
-                        pendingAcks.push_back(ctrlevent);
-                    }
+            for (int i=0; i<ack_count; i++) {
+                if (acks[i] == pendingAck.sequence) {
+                    // last event acked
+                    printf("sequence %d adked\n", pendingAck.sequence);
+                    pendingAck.sequence = 0;
                 }
-                else if (event.type==SDL_KEYUP)
-                {
-                    ctrlevent.type = Ctrl_KEYUP;
-                    ctrlevent.key = keyconv.convert(event.key.keysym.sym);
-                    if (ctrlevent.key != 0) {
-                        localKeyReaderWriter->writeEvent(&ctrlevent);
-                        pendingAcks.push_back(ctrlevent);
-                    }
-                }
-            } else {
-                ctrlevent.type = Ctrl_KEYNONE;
             }
+
+            // if no pending ack
+            if (pendingAck.sequence == 0) {
+                //----input----
+                SDL_Event event;
+                if (SDL_PollEvent(&event) == 1) {
+                    localSequence = connection.GetReliabilitySystem().GetLocalSequence();
+                    ctrlevent.frameStamp = frame;
+                    ctrlevent.controler = 1;
+                    if((event.type==SDL_KEYDOWN && event.key.keysym.sym==SDLK_ESCAPE) || (event.type==SDL_QUIT)) exited=1;
+                    else if (event.type==SDL_KEYDOWN)
+                    {
+                        ctrlevent.type = Ctrl_KEYDOWN;
+                        ctrlevent.key = keyconv.convert(event.key.keysym.sym);
+                        if (ctrlevent.key != 0) {
+                            localKeyReaderWriter->writeEvent(&ctrlevent);
+                            pendingAck = {ctrlevent, localSequence};
+                        }
+                    }
+                    else if (event.type==SDL_KEYUP)
+                    {
+                        ctrlevent.type = Ctrl_KEYUP;
+                        ctrlevent.key = keyconv.convert(event.key.keysym.sym);
+                        if (ctrlevent.key != 0) {
+                            localKeyReaderWriter->writeEvent(&ctrlevent);
+                            pendingAck = {ctrlevent, localSequence};
+                        }
+                    }
+                } else {
+                    ctrlevent.type = Ctrl_KEYNONE;
+                }
+            }
+
             if (!connection.SendPacket(&ctrlevent, sizeof(ctrlevent))) {
                 printf("send error\n");
             }
         } else if (mode == Server) {
-            //----input----
-            SDL_Event event;
-            if (SDL_PollEvent(&event) == 1) {
-                ctrlevent.frameStamp = frame;
-                ctrlevent.controler = 1;
-                if((event.type==SDL_KEYDOWN && event.key.keysym.sym==SDLK_ESCAPE) || (event.type==SDL_QUIT)) exited=1;
-                else if (event.type==SDL_KEYDOWN)
-                {
-                    ctrlevent.type = Ctrl_KEYDOWN;
-                    ctrlevent.key = keyconv.convert(event.key.keysym.sym);
-                    if (ctrlevent.key != 0) {
-                        localKeyReaderWriter->writeEvent(&ctrlevent);
-                        pendingAcks.push_back(ctrlevent);
+            // if no pending ack
+            if (pendingAck.sequence == 0) {
+                //----input----
+                SDL_Event event;
+                if (SDL_PollEvent(&event) == 1) {
+                    localSequence = connection.GetReliabilitySystem().GetLocalSequence();
+                    ctrlevent.frameStamp = frame;
+                    ctrlevent.controler = 1;
+                    if((event.type==SDL_KEYDOWN && event.key.keysym.sym==SDLK_ESCAPE) || (event.type==SDL_QUIT)) exited=1;
+                    else if (event.type==SDL_KEYDOWN)
+                    {
+                        ctrlevent.type = Ctrl_KEYDOWN;
+                        ctrlevent.key = keyconv.convert(event.key.keysym.sym);
+                        if (ctrlevent.key != 0) {
+                            localKeyReaderWriter->writeEvent(&ctrlevent);
+                            pendingAck = {ctrlevent, localSequence};
+                        }
                     }
-                }
-                else if (event.type==SDL_KEYUP)
-                {
-                    ctrlevent.type = Ctrl_KEYUP;
-                    ctrlevent.key = keyconv.convert(event.key.keysym.sym);
-                    if (ctrlevent.key != 0) {
-                        localKeyReaderWriter->writeEvent(&ctrlevent);
-                        pendingAcks.push_back(ctrlevent);
+                    else if (event.type==SDL_KEYUP)
+                    {
+                        ctrlevent.type = Ctrl_KEYUP;
+                        ctrlevent.key = keyconv.convert(event.key.keysym.sym);
+                        if (ctrlevent.key != 0) {
+                            localKeyReaderWriter->writeEvent(&ctrlevent);
+                            pendingAck = {ctrlevent, localSequence};
+                        }
                     }
+                } else {
+                    ctrlevent.type = Ctrl_KEYNONE;
                 }
-            } else {
-                ctrlevent.type = Ctrl_KEYNONE;
             }
+
             if (!connection.SendPacket(&ctrlevent, sizeof(ctrlevent))) {
                 printf("send error\n");
             }
@@ -301,6 +331,17 @@ int main(int argc, char **argv)
                 }
             } else {
                 printf("recv error\n");
+            }
+
+            int ack_count = 0;
+            unsigned int * acks = NULL;
+            connection.GetReliabilitySystem().GetAcks( &acks, ack_count );
+            for (int i=0; i<ack_count; i++) {
+                if (acks[i] == pendingAck.sequence) {
+                    // last event acked
+                    printf("sequence %d adked\n", pendingAck.sequence);
+                    pendingAck.sequence = 0;
+                }
             }
         } else if (mode == AIcontrol) {
             //----input----
