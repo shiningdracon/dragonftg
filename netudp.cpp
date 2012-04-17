@@ -503,6 +503,7 @@ void ReliabilitySystem::UpdateQueues()
     }
 
     while ( pendingAckQueue.size() && pendingAckQueue.front().time > rtt_maximum + epsilon ) {
+        last_lost_packet_seq = pendingAckQueue.front().sequence;
         pendingAckQueue.pop_front();
         lost_packets++;
     }

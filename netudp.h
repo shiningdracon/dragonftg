@@ -278,6 +278,9 @@ namespace dragonfighting {
             PacketQueue receivedQueue;			// received packets for determining acks to send (kept up to most recent recv sequence - 32)
             PacketQueue ackedQueue;				// acked packets (kept until rtt_maximum * 2)
 
+            // add by shiningdracon
+            unsigned int last_lost_packet_seq;
+
         public:
             ReliabilitySystem(unsigned int max_sequence = 0xFFFFFFFF);
             void Reset();
@@ -310,6 +313,7 @@ namespace dragonfighting {
             float GetAckedBandwidth() const { return acked_bandwidth; }
             float GetRoundTripTime() const { return rtt; }
             int GetHeaderSize() const { return 12; }
+            unsigned int GetLastLostPacket() const { return last_lost_packet_seq; }
 
         protected:
             void AdvanceQueueTime(float deltaTime);
