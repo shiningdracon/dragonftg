@@ -115,6 +115,7 @@ int main(int argc, char **argv)
     bool connected = false;
     const unsigned int maxFrameDis = 30; // 30f = 0.5sec
     const unsigned int minFrameDis = 5;
+    unsigned int waiting_timer = 30 * 60; // 30sec
 
     ReliableConnection connection(ProtocolId, TimeOut);
 
@@ -423,6 +424,11 @@ int main(int argc, char **argv)
             }
             // ----frame control----
             frame++;
+        } else {
+            waiting_timer --;
+            if (waiting_timer == 0) {
+                exited = 1;
+            }
         }
 
         connection.Update(DeltaTime);
