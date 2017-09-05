@@ -132,9 +132,6 @@ void Widget::addChild(Widget *child)
 
 void Widget::splitFromParent()
 {
-    if (this == NULL) {
-        return;
-    }
     if (this->parent != NULL) {
         if (this->parent->left_child == this) {
             //this is the first child of its parent
